@@ -48,7 +48,7 @@ can also pass it explicitly:
 ```ts
 const mail = new OrbotoMail({
   apiKey: process.env.OMS_API_KEY,
-  baseUrl: 'https://mail.orboto.io', // default
+  baseUrl: 'https://mail.orboto.io/api', // default
   timeout: 10_000,
   maxRetries: 3,
 });

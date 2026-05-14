@@ -11,7 +11,7 @@
  *   // Explicit construction:
  *   const mail = new OrbotoMail({
  *     apiKey: 'oms_live_xxx',
- *     baseUrl: 'https://mail.orboto.io', // default
+ *     baseUrl: 'https://mail.orboto.io/api', // default
  *     timeout: 10_000,
  *   });
  *
@@ -68,7 +68,7 @@ export { OrbotoMailError };
 
 export interface OrbotoMailOptions {
   apiKey?: string;
-  /** Override the API base URL. Default `https://mail.orboto.io`. */
+  /** Override the API base URL. Default `https://mail.orboto.io/api`. */
   baseUrl?: string;
   /** Per-request timeout in milliseconds. Default 10_000. */
   timeout?: number;
@@ -78,7 +78,14 @@ export interface OrbotoMailOptions {
   fetch?: typeof fetch;
 }
 
-const DEFAULT_BASE_URL = 'https://mail.orboto.io';
+// Default API base URL. The nginx edge at `mail.orboto.io` reverse-
+// proxies `/api/v1/*` to the internal Fastify on `:3000`. The
+// trailing `/api` IS part of the default base — the SDK's HttpClient
+// appends `/v1/send` etc. directly, producing
+// `https://mail.orboto.io/api/v1/send` on the wire. See
+// `deploy/docker-compose.yml` + `apps/web/nginx.conf` for the
+// edge-routing.
+const DEFAULT_BASE_URL = 'https://mail.orboto.io/api';
 
 /**
  * Lazily load dotenv if it's installed in the consumer's project. We
