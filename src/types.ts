@@ -1,0 +1,144 @@
+/**
+ * Wire-protocol types for the Orboto Mail Service REST API.
+ *
+ * These types are the SDK's contract with the API. They're derived from
+ * `evaluation/adr-orboto-mail-service.md` §SDK design + §Send-time
+ * enforcement logic. The API itself (OMS-5+) is built to match this
+ * contract — if a discrepancy ever surfaces, the SDK gets a bug-fix
+ * and the API tracks the SDK, not the other way around (consumer-side
+ * contracts win).
+ *
+ * Migration-from-Resend note: where the shape is similar, we deliberately
+ * align so a customer porting code can rename `resend.emails.send(...)`
+ * to `mail.send(...)` and not have to restructure the payload. See
+ * README.md §Migration from Resend for the side-by-side.
+ */
+
+/** Standard tag-bag for analytics / per-message routing. */
+export type MessageTags = Record<string, string>;
+
+export interface SendInput {
+  /**
+   * From address. Must be on the customer's verified-domains
+   * allowlist; otherwise the API returns 400 `from_domain_not_authorized`.
+   */
+  from: string;
+  /** Recipient address. Single recipient per send (batch send lands in OMS-15). */
+  to: string;
+  subject: string;
+  /** At least one of `html` or `text` must be present. */
+  html?: string;
+  text?: string;
+  /**
+   * Tag-bag stored on `oms_sends.tags` for analytics + customer
+   * webhook filtering. Keys + values: ASCII, ≤256 chars each.
+   */
+  tags?: MessageTags;
+}
+
+export interface SendTemplateInput {
+  templateId: string;
+  to: string;
+  variables: Record<string, unknown>;
+  /** Optional from-address override. If absent, server uses the
+   * template's default-from (configured at template-create time). */
+  from?: string;
+  tags?: MessageTags;
+}
+
+/** Quota envelope returned on every send + queryable via `getQuota()`. */
+export interface QuotaState {
+  /** Current consumed count within the active period (base + overage). */
+  current: number;
+  /** Effective monthly ceiling (base + overage cap). */
+  total: number;
+  /** ISO-8601 timestamp when the quota resets. */
+  resetAt: string;
+  /** Fraction in [0, ∞) — can exceed 1 within overage allowance. */
+  percentUsed: number;
+  /** Threshold at which a `quota-warning` event is fired. */
+  softWarnAt: number;
+  /** True once the customer has crossed `softWarnAt` this period. */
+  softWarnTriggered: boolean;
+  /**
+   * When `current >= total`, populated with the specific cap-reason:
+   *   - `base_quota`         — base monthly quota exhausted, overage
+   *                            not opted in
+   *   - `no_payment_method`  — overage opted in but no verified
+   *                            payment method on file
+   *   - `overage_cap`        — both opted-in + paid, but the
+   *                            per-tier overage cap has been reached
+   * Undefined when the quota is healthy.
+   */
+  capReason?: 'base_quota' | 'no_payment_method' | 'overage_cap';
+}
+
+export interface SendResult {
+  /** SES-issued message-id. Stored on `oms_sends.message_id`. */
+  messageId: string;
+  /** `queued` at success-time; later moves through SES events. */
+  status: 'queued' | 'delivered' | 'bounced' | 'complained' | 'rejected';
+  /** Quota snapshot AFTER this send was accounted for. */
+  remainingQuota: QuotaState;
+  /** True when this send consumed an over-base-quota slot. */
+  overage: boolean;
+}
+
+export interface SuppressionEntry {
+  email: string;
+  reason: 'hard-bounce' | 'complaint' | 'manual';
+  addedAt: string;
+  addedBy: string;
+}
+
+export interface SuppressionCheckResult {
+  email: string;
+  suppressed: boolean;
+  entry?: SuppressionEntry;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  subject: string;
+  /** Zod-compatible JSON schema describing the `variables` shape. */
+  variablesSchema?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Standard error envelope from the OMS API. Every non-2xx response
+ * carries this shape; the SDK throws an `OrbotoMailError` wrapping it
+ * (see errors.ts).
+ */
+export interface ApiErrorBody {
+  error: string;
+  /** Specific reason within the error class — drives retry decisions. */
+  reason?: string;
+  message: string;
+  /** Present on 402 responses so callers can render an actionable banner. */
+  remainingQuota?: QuotaState;
+  /** Present on 503 responses indicating the retry-after window. */
+  retryAfterMs?: number;
+}
+
+/** Connection-revoked event payload. */
+export interface ConnectionRevokedEvent {
+  reason: 'connection_revoked';
+  message: string;
+}
+
+/**
+ * Map of EventEmitter event names → payloads. The SDK's `on()` method
+ * is typed against this map so consumers get autocomplete + payload
+ * type-checking.
+ */
+export interface SdkEventMap {
+  'quota-warning': [quota: QuotaState];
+  'quota-low': [quota: QuotaState];
+  'quota-exhausted': [quota: QuotaState];
+  'connection-revoked': [event: ConnectionRevokedEvent];
+}
+
+export type SdkEventName = keyof SdkEventMap;
