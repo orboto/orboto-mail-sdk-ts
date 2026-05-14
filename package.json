@@ -1,0 +1,59 @@
+{
+  "name": "@orboto/mail",
+  "version": "0.1.0",
+  "description": "Official TypeScript SDK for the Orboto Mail Service. Drop-in transactional-mail client with auto-quota-tracking, retry-with-backoff, EventEmitter for quota warnings, and full TypeScript types. Migration-friendly from Resend.",
+  "license": "SEE LICENSE IN ../../LICENSE.md",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "orboto",
+    "email",
+    "transactional-email",
+    "ses",
+    "resend-alternative",
+    "eu-hosted",
+    "dsgvo"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orboto/orboto-mail-service.git",
+    "directory": "packages/sdk"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
