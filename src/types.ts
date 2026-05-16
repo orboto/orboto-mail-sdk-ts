@@ -68,9 +68,23 @@ export interface QuotaState {
    *                            payment method on file
    *   - `overage_cap`        — both opted-in + paid, but the
    *                            per-tier overage cap has been reached
+   *   - `daily_cap`          — per-day cap reached (Free tier;
+   *                            resets at UTC midnight)
    * Undefined when the quota is healthy.
    */
-  capReason?: 'base_quota' | 'no_payment_method' | 'overage_cap';
+  capReason?: 'base_quota' | 'no_payment_method' | 'overage_cap' | 'daily_cap';
+  /**
+   * Daily-cap hard limit. `null` for paid tiers (no per-day cap),
+   * a number for Free tier. When non-null and `dailyRemaining=0` the
+   * next send returns 402 `quota_exhausted_daily`.
+   */
+  dailyCap: number | null;
+  /** Sends consumed today (UTC). `null` when no daily cap is set. */
+  dailyCurrent: number | null;
+  /** `dailyCap - dailyCurrent`, never negative. `null` when no cap. */
+  dailyRemaining: number | null;
+  /** ISO-8601 timestamp of the next UTC midnight. `null` when no cap. */
+  dayResetAt: string | null;
 }
 
 export interface SendResult {
