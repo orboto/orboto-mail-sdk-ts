@@ -83,6 +83,28 @@ export interface SendBatchResult {
   };
 }
 
+export interface InboundMail {
+  id: string;
+  messageId: string;
+  from: string;
+  to: string;
+  subject: string | null;
+  sizeBytes: number | null;
+  parsedStatus: string;
+  receivedAt: string;
+}
+
+export interface InboundDetail extends InboundMail {
+  /** 15-min presigned-URL for the raw MIME body in S3. */
+  downloadUrl: string;
+  downloadExpiresAt: string;
+}
+
+export interface InboundListResult {
+  inbound: InboundMail[];
+  nextCursor: string | null;
+}
+
 export interface SendTemplateInput {
   templateId: string;
   to: string;

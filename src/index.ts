@@ -42,6 +42,8 @@ import { HttpClient } from './http.js';
 import { QuotaEmitter } from './quota-emitter.js';
 import type {
   ConnectionRevokedEvent,
+  InboundDetail,
+  InboundListResult,
   QuotaState,
   SendBatchInput,
   SendBatchResult,
@@ -60,6 +62,9 @@ import type {
 
 export type {
   ConnectionRevokedEvent,
+  InboundDetail,
+  InboundListResult,
+  InboundMail,
   MessageTags,
   QuotaState,
   SdkEventMap,
@@ -136,6 +141,8 @@ export class OrbotoMail extends EventEmitter {
   readonly webhooks: WebhooksResource;
   /** Sub-resource: sends-history queries. */
   readonly sends: SendsResource;
+  /** Sub-resource: inbound mail (OMS-25). */
+  readonly inbound: InboundResource;
 
   constructor(opts: OrbotoMailOptions = {}) {
     super();
@@ -182,6 +189,7 @@ export class OrbotoMail extends EventEmitter {
     this.templates = new TemplatesResource(this.http);
     this.webhooks = new WebhooksResource(this.http);
     this.sends = new SendsResource(this.http);
+    this.inbound = new InboundResource(this.http);
   }
 
   /**
@@ -405,3 +413,33 @@ class SendsResource {
     return this.http.request<SendListItem>('GET', `/v1/sends/${encodeURIComponent(id)}`);
   }
 }
+
+class InboundResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /**
+   * List inbound mails (most-recent first), cursor-paginated (OMS-25).
+   * Body is NOT returned in the list response — call `get(id)` for the
+   * presigned download-URL.
+   */
+  async list(opts: { limit?: number; cursor?: string } = {}): Promise<InboundListResult> {
+    const params = new URLSearchParams();
+    if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+    if (opts.cursor) params.set('cursor', opts.cursor);
+    const query = params.toString();
+    return this.http.request<InboundListResult>(
+      'GET',
+      query ? `/v1/inbound?${query}` : '/v1/inbound',
+    );
+  }
+
+  /**
+   * Get one inbound mail + a 15-min presigned-URL for the raw MIME
+   * body. Fetch the body from `downloadUrl` directly with `fetch()` —
+   * no Bearer needed, the URL is its own credential.
+   */
+  async get(id: string): Promise<InboundDetail> {
+    return this.http.request<InboundDetail>('GET', `/v1/inbound/${encodeURIComponent(id)}`);
+  }
+}
+
