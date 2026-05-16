@@ -159,8 +159,7 @@ The SDK auto-retries 502/503/504 + network timeouts up to `maxRetries`
 - **No JSX/React input.** Use server-side templates via `mail.templates.create(...)` + `mail.sendTemplate({ templateId, variables })`, or render React to HTML before calling `mail.send()`.
 - **`replyTo` / `cc` / `bcc` are not supported yet.** Single-recipient transactional flows only.
 
-If you hit a shape that's unexpected,
-[open an issue](https://github.com/orboto/orboto-mail-service/issues).
+If you hit a shape that's unexpected, drop us a line at [support@orboto.io](mailto:support@orboto.io).
 
 ## TypeScript
 
