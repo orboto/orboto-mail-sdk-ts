@@ -30,15 +30,16 @@ console.log(result.remainingQuota);  // QuotaState { current, total, ... }
 
 ## Why @orboto/mail?
 
-- **EU-hosted by default.** Sends through AWS SES in `eu-central-1`
-  (Frankfurt) with `eu-west-1` (Ireland) automatic failover. No US data
-  transit. DSGVO-aligned out of the box.
-- **Per-tenant DKIM domains.** Every Orboto-Workspace gets a
-  pre-provisioned `<tenant>.orbo.to` subdomain with DKIM auto-rotated by
-  SES. Custom domains follow a Resend-style copy-paste setup.
+- **EU-hosted by default.** Sends through EU AWS infrastructure with
+  region-failover. No US data transit. GDPR/DSGVO-aligned out of the box.
+- **Custom-domain self-service.** Add your sending domain, copy the
+  generated DKIM CNAMEs + SPF/DMARC records to your DNS provider, click
+  Verify — your account starts sending from `support@yourdomain.com`.
 - **Quota-aware by design.** Every send returns the updated quota state.
   No second API call to figure out where you stand.
-- **Drop-in compat with Resend.** See [Migration from Resend](#migration-from-resend) below.
+- **Agent-first.** A companion MCP server [`@orboto/mail-mcp`](https://www.npmjs.com/package/@orboto/mail-mcp) exposes the
+  same surface as MCP tools so Claude, Cursor, and other agents can drive
+  email flows natively.
 
 ## Auth
 
@@ -54,17 +55,7 @@ const mail = new OrbotoMail({
 });
 ```
 
-Keys are obtained one of two ways:
-
-1. **Customer-Portal** at `account.orboto.io/mail/keys` — manual issue
-   for self-host or custom integrations.
-2. **OAuth flow** — the Orboto-Workspace connects to OMS via the
-   Connection-Protocol; OMS issues the key + injects it into your
-   workspace's environment as `OMS_API_KEY`. No copy-paste.
-
-If you're an Orboto-SaaS tenant, your Coolify stack already has
-`OMS_API_KEY` + `OMS_BASE_URL` set — `new OrbotoMail()` Just Works with
-no further configuration.
+Get an API key at [account.orboto.io/mail/keys](https://account.orboto.io/mail/keys). The dashboard supports manual key issuance for any integration as well as the OAuth Connection-Protocol when you want OMS to mint a key for a specific application without copy-paste.
 
 ## Sending mail
 
@@ -77,7 +68,7 @@ const result = await mail.send({
   subject: 'Welcome',
   html: '<h1>Welcome!</h1>',
   text: 'Welcome!',                          // fallback for plain-text clients
-  tags: { workflow: 'invite', tenant: 'acme' }, // arbitrary string tags for analytics
+  tags: { workflow: 'invite', segment: 'beta' }, // arbitrary string tags for analytics
 });
 ```
 
@@ -161,41 +152,14 @@ try {
 The SDK auto-retries 502/503/504 + network timeouts up to `maxRetries`
 (default 3) with exponential backoff + jitter.
 
-## Migration from Resend
+## Wire-format notes
 
-Wire-protocol compatibility is deliberate where the semantics match. A
-typical Resend integration changes:
+- **Single recipient per `send()`.** Use `mail.sendBatch({ messages })` for fan-out — up to 100 messages per HTTP call with per-item outcomes.
+- **`tags` is `Record<string, string>`.** Keys + values are ASCII, ≤256 chars each. Used for analytics + webhook filtering on `oms_sends.tags`.
+- **No JSX/React input.** Use server-side templates via `mail.templates.create(...)` + `mail.sendTemplate({ templateId, variables })`, or render React to HTML before calling `mail.send()`.
+- **`replyTo` / `cc` / `bcc` are not supported yet.** Single-recipient transactional flows only.
 
-```diff
-- import { Resend } from 'resend';
-+ import { OrbotoMail } from '@orboto/mail';
-
-- const resend = new Resend(process.env.RESEND_API_KEY);
-+ const mail = new OrbotoMail(); // reads OMS_API_KEY from env
-
-- await resend.emails.send({
-+ await mail.send({
-    from: 'noreply@acme.example.com',
-    to: 'user@example.com',
-    subject: 'Welcome',
-    html: '<h1>Welcome!</h1>',
-  });
-```
-
-Differences vs Resend:
-
-- **Single recipient per send.** Batch send lands in OMS-15. For now,
-  loop client-side. (We auto-merge duplicate recipients to the same
-  message-id at the wire layer, so you don't have to dedupe yourself.)
-- **`tags` is `Record<string, string>`, not an array of `{name, value}`
-  objects.** Easier to construct, same expressiveness.
-- **`react` not supported (yet).** Use server-side templates or render
-  React to HTML before calling `mail.send()`. JSX-as-an-input is on the
-  roadmap.
-- **`replyTo` and `cc` / `bcc` land in OMS-15.** For OMS-1.x, only
-  `to` is supported.
-
-If you hit something that doesn't have an obvious analog,
+If you hit a shape that's unexpected,
 [open an issue](https://github.com/orboto/orboto-mail-service/issues).
 
 ## TypeScript
@@ -208,5 +172,4 @@ import type { SendResult, QuotaState, SuppressionEntry } from '@orboto/mail';
 
 ## License
 
-[Orboto Sustainable Use License](../../LICENSE.md) — free for internal
-business use + non-commercial use; redistribution restricted.
+[MIT](./LICENSE.md) — use it however you want.

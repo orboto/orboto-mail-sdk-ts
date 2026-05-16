@@ -1,17 +1,9 @@
 /**
  * Wire-protocol types for the Orboto Mail Service REST API.
  *
- * These types are the SDK's contract with the API. They're derived from
- * `evaluation/adr-orboto-mail-service.md` §SDK design + §Send-time
- * enforcement logic. The API itself (OMS-5+) is built to match this
- * contract — if a discrepancy ever surfaces, the SDK gets a bug-fix
- * and the API tracks the SDK, not the other way around (consumer-side
- * contracts win).
- *
- * Migration-from-Resend note: where the shape is similar, we deliberately
- * align so a customer porting code can rename `resend.emails.send(...)`
- * to `mail.send(...)` and not have to restructure the payload. See
- * README.md §Migration from Resend for the side-by-side.
+ * These types are the SDK's contract with the API. If a discrepancy
+ * ever surfaces, the SDK gets a bug-fix and the API tracks the SDK,
+ * not the other way around (consumer-side contracts win).
  */
 
 /** Standard tag-bag for analytics / per-message routing. */
@@ -23,7 +15,7 @@ export interface SendInput {
    * allowlist; otherwise the API returns 400 `from_domain_not_authorized`.
    */
   from: string;
-  /** Recipient address. Single recipient per send (batch send lands in OMS-15). */
+  /** Recipient address. Single recipient per send. Use `mail.sendBatch({ messages })` for fan-out to many recipients. */
   to: string;
   subject: string;
   /** At least one of `html` or `text` must be present. */
@@ -37,8 +29,8 @@ export interface SendInput {
 }
 
 /**
- * One message inside a batch (OMS-24). Same shape as SendInput but
- * with `templateId` + `variables` allowed alongside the inline-content
+ * One message inside a batch. Same shape as SendInput but with
+ * `templateId` + `variables` allowed alongside the inline-content
  * fields — server resolves per-item.
  */
 export interface SendBatchMessage {

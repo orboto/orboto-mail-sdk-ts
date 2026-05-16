@@ -32,8 +32,7 @@
  *   mail.on('quota-exhausted', (q) => console.error('done', q));
  *   mail.on('connection-revoked', (e) => console.error(e.message));
  *
- * Full architecture: `evaluation/adr-orboto-mail-service.md` in
- * `orboto-internal-docs`.
+ * Docs: https://mail.orboto.io
  */
 import { EventEmitter } from 'node:events';
 
@@ -141,7 +140,7 @@ export class OrbotoMail extends EventEmitter {
   readonly webhooks: WebhooksResource;
   /** Sub-resource: sends-history queries. */
   readonly sends: SendsResource;
-  /** Sub-resource: inbound mail (OMS-25). */
+  /** Sub-resource: inbound mail (received messages + presigned-URL access to the raw MIME body). */
   readonly inbound: InboundResource;
 
   constructor(opts: OrbotoMailOptions = {}) {
@@ -211,7 +210,7 @@ export class OrbotoMail extends EventEmitter {
   }
 
   /**
-   * Send multiple messages in one HTTP call (OMS-24). Up to 100 per
+   * Send multiple messages in one HTTP call. Up to 100 per
    * batch. Per-item processing — partial failures are surfaced in the
    * `results` array; the call as a whole always returns 200. Inspect
    * `summary` + `results[].ok` to decide whether to retry indices.
@@ -418,7 +417,7 @@ class InboundResource {
   constructor(private readonly http: HttpClient) {}
 
   /**
-   * List inbound mails (most-recent first), cursor-paginated (OMS-25).
+   * List inbound mails (most-recent first), cursor-paginated.
    * Body is NOT returned in the list response — call `get(id)` for the
    * presigned download-URL.
    */

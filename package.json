@@ -1,8 +1,8 @@
 {
   "name": "@orboto/mail",
   "version": "0.1.0",
-  "description": "Official TypeScript SDK for the Orboto Mail Service. Drop-in transactional-mail client with auto-quota-tracking, retry-with-backoff, EventEmitter for quota warnings, and full TypeScript types. Migration-friendly from Resend.",
-  "license": "SEE LICENSE IN ../../LICENSE.md",
+  "description": "Official TypeScript SDK for the Orboto Mail Service. Drop-in transactional-mail client with auto-quota-tracking, retry-with-backoff, EventEmitter for quota lifecycle events, and full TypeScript types. EU-hosted, GDPR-compliant.",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -16,10 +16,11 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean && rm -f dist/.tsbuildinfo",
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
@@ -43,9 +44,10 @@
     "email",
     "transactional-email",
     "ses",
-    "resend-alternative",
     "eu-hosted",
-    "dsgvo"
+    "gdpr",
+    "dsgvo",
+    "typescript-sdk"
   ],
   "repository": {
     "type": "git",
