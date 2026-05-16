@@ -40,6 +40,9 @@ import { OrbotoMailError } from './errors.js';
 import { HttpClient } from './http.js';
 import { QuotaEmitter } from './quota-emitter.js';
 import type {
+  CloudflareAutoSetupInput,
+  CloudflareAutoSetupResult,
+  CloudflareDetectResult,
   ConnectionRevokedEvent,
   InboundDetail,
   InboundListResult,
@@ -60,6 +63,9 @@ import type {
 } from './types.js';
 
 export type {
+  CloudflareAutoSetupInput,
+  CloudflareAutoSetupResult,
+  CloudflareDetectResult,
   ConnectionRevokedEvent,
   InboundDetail,
   InboundListResult,
@@ -142,6 +148,8 @@ export class OrbotoMail extends EventEmitter {
   readonly sends: SendsResource;
   /** Sub-resource: inbound mail (received messages + presigned-URL access to the raw MIME body). */
   readonly inbound: InboundResource;
+  /** Sub-resource: sender-domain management (Cloudflare auto-setup, OMS-15). */
+  readonly senderDomains: SenderDomainsResource;
 
   constructor(opts: OrbotoMailOptions = {}) {
     super();
@@ -189,6 +197,7 @@ export class OrbotoMail extends EventEmitter {
     this.webhooks = new WebhooksResource(this.http);
     this.sends = new SendsResource(this.http);
     this.inbound = new InboundResource(this.http);
+    this.senderDomains = new SenderDomainsResource(this.http);
   }
 
   /**
@@ -410,6 +419,40 @@ class SendsResource {
 
   async get(id: string): Promise<SendListItem> {
     return this.http.request<SendListItem>('GET', `/v1/sends/${encodeURIComponent(id)}`);
+  }
+}
+
+class SenderDomainsResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /**
+   * Detect whether a sender-domain is hosted on Cloudflare DNS.
+   * The UI uses the result to conditionally show the "Auto-setup
+   * via Cloudflare" button.
+   */
+  async cloudflareDetect(domainId: string): Promise<CloudflareDetectResult> {
+    return this.http.request<CloudflareDetectResult>(
+      'GET',
+      `/v1/sender-domains/${encodeURIComponent(domainId)}/cloudflare-detect`,
+    );
+  }
+
+  /**
+   * Auto-setup the DKIM + SPF + DMARC records on Cloudflare using a
+   * customer-supplied API token. Default behaviour is single-use:
+   * the token validates, creates the 5 records, then is discarded.
+   * Pass `storeForRotation: true` to AES-256-GCM-encrypt + retain
+   * the token for future DKIM-key rotations.
+   */
+  async cloudflareAutoSetup(
+    domainId: string,
+    input: CloudflareAutoSetupInput,
+  ): Promise<CloudflareAutoSetupResult> {
+    return this.http.request<CloudflareAutoSetupResult>(
+      'POST',
+      `/v1/sender-domains/${encodeURIComponent(domainId)}/cloudflare-auto-setup`,
+      input,
+    );
   }
 }
 

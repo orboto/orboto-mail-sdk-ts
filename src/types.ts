@@ -97,6 +97,31 @@ export interface InboundListResult {
   nextCursor: string | null;
 }
 
+/** Sender-domain DNS detection result (Cloudflare auto-setup, OMS-15). */
+export interface CloudflareDetectResult {
+  onCloudflare: boolean;
+  nameservers: string[];
+  resolvedFor: string;
+}
+
+export interface CloudflareAutoSetupInput {
+  /** Cloudflare API token with Zone:DNS:Edit on the relevant zone. */
+  apiToken: string;
+  /**
+   * Default false (single-use, token immediately discarded after
+   * creating records). Set to true to AES-256-GCM-encrypt + store
+   * the token for future DKIM-key rotations.
+   */
+  storeForRotation?: boolean;
+}
+
+export interface CloudflareAutoSetupResult {
+  ok: true;
+  zoneId: string;
+  recordsCreated: number;
+  tokenStored: boolean;
+}
+
 export interface SendTemplateInput {
   templateId: string;
   to: string;
