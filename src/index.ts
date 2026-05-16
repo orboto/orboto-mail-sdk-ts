@@ -43,6 +43,8 @@ import { QuotaEmitter } from './quota-emitter.js';
 import type {
   ConnectionRevokedEvent,
   QuotaState,
+  SendBatchInput,
+  SendBatchResult,
   SendInput,
   SendListItem,
   SendListResult,
@@ -62,6 +64,9 @@ export type {
   QuotaState,
   SdkEventMap,
   SdkEventName,
+  SendBatchInput,
+  SendBatchItemResult,
+  SendBatchResult,
   SendInput,
   SendListItem,
   SendListResult,
@@ -195,6 +200,26 @@ export class OrbotoMail extends EventEmitter {
       throw new Error('@orboto/mail: send requires at least one of `html` or `text`.');
     }
     return this.http.request<SendResult>('POST', '/v1/send', input);
+  }
+
+  /**
+   * Send multiple messages in one HTTP call (OMS-24). Up to 100 per
+   * batch. Per-item processing — partial failures are surfaced in the
+   * `results` array; the call as a whole always returns 200. Inspect
+   * `summary` + `results[].ok` to decide whether to retry indices.
+   *
+   * Quota: each item decrements quota individually + in array order.
+   * The first quota-exhaust stops further attempts; subsequent items
+   * come back with `quotaSkipped=true`.
+   */
+  async sendBatch(input: SendBatchInput): Promise<SendBatchResult> {
+    if (!Array.isArray(input.messages) || input.messages.length === 0) {
+      throw new Error('@orboto/mail: sendBatch requires a non-empty `messages` array.');
+    }
+    if (input.messages.length > 100) {
+      throw new Error('@orboto/mail: sendBatch is capped at 100 messages per call.');
+    }
+    return this.http.request<SendBatchResult>('POST', '/v1/send/batch', input);
   }
 
   /**

@@ -36,6 +36,53 @@ export interface SendInput {
   tags?: MessageTags;
 }
 
+/**
+ * One message inside a batch (OMS-24). Same shape as SendInput but
+ * with `templateId` + `variables` allowed alongside the inline-content
+ * fields — server resolves per-item.
+ */
+export interface SendBatchMessage {
+  from: string;
+  to: string;
+  subject?: string;
+  html?: string;
+  text?: string;
+  tags?: MessageTags;
+  templateId?: string;
+  variables?: Record<string, unknown>;
+}
+
+export interface SendBatchInput {
+  messages: SendBatchMessage[];
+}
+
+export interface SendBatchItemResult {
+  index: number;
+  ok: boolean;
+  // success-only
+  messageId?: string;
+  status?: 'queued';
+  overage?: boolean;
+  // error-only
+  error?: string;
+  reason?: string;
+  message?: string;
+  /** Set when an earlier item exhausted quota and this one was not attempted. */
+  quotaSkipped?: boolean;
+}
+
+export interface SendBatchResult {
+  results: SendBatchItemResult[];
+  /** Quota snapshot from the LAST processed item (or empty if none processed). */
+  remainingQuota: QuotaState;
+  summary: {
+    queued: number;
+    rejected: number;
+    suppressed: number;
+    skipped: number;
+  };
+}
+
 export interface SendTemplateInput {
   templateId: string;
   to: string;
