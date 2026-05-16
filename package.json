@@ -54,7 +54,6 @@
     "email": "support@orboto.io"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   }
 }
