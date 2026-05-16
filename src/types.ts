@@ -107,6 +107,67 @@ export interface Template {
   updatedAt: string;
 }
 
+export type WebhookEvent =
+  | 'quota.soft-warn-80'
+  | 'quota.soft-warn-95'
+  | 'quota.exhausted-base'
+  | 'quota.exhausted-cap'
+  | 'bounce.permanent'
+  | 'bounce.transient'
+  | 'complaint'
+  | 'delivery';
+
+export interface Webhook {
+  id: string;
+  url: string;
+  label: string | null;
+  eventFilters: WebhookEvent[];
+  enabled: boolean;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastFailureReason: string | null;
+  createdAt: string;
+}
+
+/**
+ * A `Webhook` augmented with the plaintext signing secret. Only returned
+ * by `webhooks.create()` and `webhooks.rotateSecret()` — callers must
+ * persist this value immediately; subsequent GETs strip it.
+ */
+export interface WebhookWithSecret extends Webhook {
+  secret: string;
+}
+
+export interface SendListItem {
+  id: string;
+  fromAddress: string;
+  toAddress: string;
+  subject: string | null;
+  messageId: string | null;
+  status: 'queued' | 'delivered' | 'bounced' | 'complained' | 'rejected';
+  bounceType: string | null;
+  complaintType: string | null;
+  sesRegion: string | null;
+  sizeBytes: number | null;
+  overage: boolean;
+  tags: Record<string, unknown> | null;
+  templateId: string | null;
+  rejectedReason: string | null;
+  createdAt: string;
+  deliveredAt: string | null;
+  bouncedAt: string | null;
+}
+
+export interface SendListResult {
+  sends: SendListItem[];
+  nextCursor: string | null;
+}
+
+export interface SuppressionListResult {
+  suppressions: SuppressionEntry[];
+  nextCursor: string | null;
+}
+
 /**
  * Standard error envelope from the OMS API. Every non-2xx response
  * carries this shape; the SDK throws an `OrbotoMailError` wrapping it

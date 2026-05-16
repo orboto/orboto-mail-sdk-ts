@@ -44,11 +44,16 @@ import type {
   ConnectionRevokedEvent,
   QuotaState,
   SendInput,
+  SendListItem,
+  SendListResult,
   SendResult,
   SendTemplateInput,
   SuppressionCheckResult,
   SuppressionEntry,
   Template,
+  Webhook,
+  WebhookEvent,
+  WebhookWithSecret,
 } from './types.js';
 
 export type {
@@ -58,11 +63,17 @@ export type {
   SdkEventMap,
   SdkEventName,
   SendInput,
+  SendListItem,
+  SendListResult,
   SendResult,
   SendTemplateInput,
   SuppressionCheckResult,
   SuppressionEntry,
+  SuppressionListResult,
   Template,
+  Webhook,
+  WebhookEvent,
+  WebhookWithSecret,
 } from './types.js';
 export { OrbotoMailError };
 
@@ -116,6 +127,10 @@ export class OrbotoMail extends EventEmitter {
   readonly suppression: SuppressionResource;
   /** Sub-resource: template operations. */
   readonly templates: TemplatesResource;
+  /** Sub-resource: outbound webhook subscriptions. */
+  readonly webhooks: WebhooksResource;
+  /** Sub-resource: sends-history queries. */
+  readonly sends: SendsResource;
 
   constructor(opts: OrbotoMailOptions = {}) {
     super();
@@ -160,6 +175,8 @@ export class OrbotoMail extends EventEmitter {
 
     this.suppression = new SuppressionResource(this.http);
     this.templates = new TemplatesResource(this.http);
+    this.webhooks = new WebhooksResource(this.http);
+    this.sends = new SendsResource(this.http);
   }
 
   /**
@@ -232,5 +249,134 @@ class TemplatesResource {
 
   async get(id: string): Promise<Template> {
     return this.http.request<Template>('GET', `/v1/templates/${encodeURIComponent(id)}`);
+  }
+
+  async create(input: {
+    name: string;
+    subject: string;
+    bodyHtml?: string;
+    bodyText?: string;
+    variablesSchema?: Record<string, unknown>;
+  }): Promise<Template> {
+    return this.http.request<Template>('POST', '/v1/templates', input);
+  }
+
+  async update(
+    id: string,
+    patch: {
+      name?: string;
+      subject?: string;
+      bodyHtml?: string | null;
+      bodyText?: string | null;
+      variablesSchema?: Record<string, unknown> | null;
+    },
+  ): Promise<Template> {
+    return this.http.request<Template>(
+      'PATCH',
+      `/v1/templates/${encodeURIComponent(id)}`,
+      patch,
+    );
+  }
+
+  async remove(id: string): Promise<{ ok: true }> {
+    return this.http.request<{ ok: true }>(
+      'DELETE',
+      `/v1/templates/${encodeURIComponent(id)}`,
+    );
+  }
+}
+
+class WebhooksResource {
+  constructor(private readonly http: HttpClient) {}
+
+  async list(): Promise<Webhook[]> {
+    const res = await this.http.request<{ webhooks: Webhook[] }>('GET', '/v1/webhooks');
+    return res.webhooks;
+  }
+
+  async get(id: string): Promise<Webhook> {
+    return this.http.request<Webhook>('GET', `/v1/webhooks/${encodeURIComponent(id)}`);
+  }
+
+  /**
+   * Create a new webhook subscription. The returned `secret` field is
+   * the plaintext signing key — it is shown exactly once. Persist it
+   * immediately; subsequent GETs strip the field.
+   */
+  async create(input: {
+    url: string;
+    label?: string;
+    eventFilters?: WebhookEvent[];
+  }): Promise<WebhookWithSecret> {
+    return this.http.request<WebhookWithSecret>('POST', '/v1/webhooks', input);
+  }
+
+  async update(
+    id: string,
+    patch: {
+      url?: string;
+      label?: string | null;
+      eventFilters?: WebhookEvent[];
+      enabled?: boolean;
+    },
+  ): Promise<Webhook> {
+    return this.http.request<Webhook>(
+      'PATCH',
+      `/v1/webhooks/${encodeURIComponent(id)}`,
+      patch,
+    );
+  }
+
+  async remove(id: string): Promise<{ ok: true }> {
+    return this.http.request<{ ok: true }>(
+      'DELETE',
+      `/v1/webhooks/${encodeURIComponent(id)}`,
+    );
+  }
+
+  /**
+   * Re-roll the signing secret. The previous secret is invalidated
+   * server-side; the returned `secret` is the new value, shown exactly
+   * once.
+   */
+  async rotateSecret(id: string): Promise<WebhookWithSecret> {
+    return this.http.request<WebhookWithSecret>(
+      'POST',
+      `/v1/webhooks/${encodeURIComponent(id)}/rotate-secret`,
+      {},
+    );
+  }
+}
+
+class SendsResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /**
+   * List sends (most-recent first), cursor-paginated. Pass the previous
+   * response's `nextCursor` value to continue. Optional filters: status,
+   * region, since (ISO timestamp).
+   */
+  async list(opts: {
+    limit?: number;
+    cursor?: string;
+    status?: 'queued' | 'delivered' | 'bounced' | 'complained' | 'rejected';
+    region?: 'eu-central-1' | 'eu-west-1';
+    since?: string;
+  } = {}): Promise<SendListResult> {
+    const params = new URLSearchParams();
+    if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+    if (opts.cursor) params.set('cursor', opts.cursor);
+    if (opts.status) params.set('status', opts.status);
+    if (opts.region) params.set('region', opts.region);
+    if (opts.since) params.set('since', opts.since);
+    const query = params.toString();
+    return this.http.request<SendListResult>(
+      'GET',
+      query ? `/v1/sends?${query}` : '/v1/sends',
+    );
+  }
+
+  async get(id: string): Promise<SendListItem> {
+    return this.http.request<SendListItem>('GET', `/v1/sends/${encodeURIComponent(id)}`);
   }
 }
