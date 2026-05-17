@@ -158,7 +158,14 @@ export interface QuotaState {
    *                            resets at UTC midnight)
    * Undefined when the quota is healthy.
    */
-  capReason?: 'base_quota' | 'no_payment_method' | 'overage_cap' | 'daily_cap';
+  capReason?:
+    | 'base_quota'
+    | 'no_payment_method'
+    | 'overage_cap'
+    | 'daily_cap'
+    | 'no_credits'
+    | 'monthly_cap_reached'
+    | 'hard_gate';
   /**
    * Daily-cap hard limit. `null` for paid tiers (no per-day cap),
    * a number for Free tier. When non-null and `dailyRemaining=0` the
@@ -171,6 +178,19 @@ export interface QuotaState {
   dailyRemaining: number | null;
   /** ISO-8601 timestamp of the next UTC midnight. `null` when no cap. */
   dayResetAt: string | null;
+  /**
+   * OMS-29 — Overage handling:
+   * - `hard_gate`: reject sends over subscription quota → 402 `quota_exhausted_hard_gate`
+   * - `use_credits`: consume `creditBalance` + accrue against `monthlyOverageCapEurCents`
+   * - `null`: legacy `allowOverage` path (will be retired once every customer is migrated)
+   */
+  overageMode: 'hard_gate' | 'use_credits' | null;
+  /** Topup credits remaining (sends). */
+  creditBalance: number;
+  /** Monthly overage spend cap in EUR cents. `null` = unlimited (Enterprise). */
+  monthlyOverageCapEurCents: number | null;
+  /** Running overage spend for the current month in microcents (1¢ = 10 000). */
+  overageUsedThisMonthMicrocents: number;
 }
 
 export interface SendResult {
