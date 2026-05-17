@@ -75,6 +75,29 @@ export interface SendBatchResult {
   };
 }
 
+/** API-key shape returned by /v1/api-keys list + get (no plaintext). */
+export interface ApiKey {
+  id: string;
+  name: string | null;
+  /** Display-prefix like `oms_live_a1b2c3d4`. */
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+/** Returned by create + rotate — plaintext key included exactly once. */
+export interface ApiKeyWithSecret extends ApiKey {
+  /** Plaintext secret. Capture immediately + never reachable again. */
+  key: string;
+}
+
+export interface CreateApiKeyInput {
+  name?: string;
+  /** Default 'live'. Use 'test' for sandbox keys (oms_test_* prefix). */
+  mode?: 'live' | 'test';
+}
+
 export interface InboundMail {
   id: string;
   messageId: string;

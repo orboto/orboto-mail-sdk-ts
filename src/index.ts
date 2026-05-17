@@ -40,10 +40,13 @@ import { OrbotoMailError } from './errors.js';
 import { HttpClient } from './http.js';
 import { QuotaEmitter } from './quota-emitter.js';
 import type {
+  ApiKey,
+  ApiKeyWithSecret,
   CloudflareAutoSetupInput,
   CloudflareAutoSetupResult,
   CloudflareDetectResult,
   ConnectionRevokedEvent,
+  CreateApiKeyInput,
   InboundDetail,
   InboundListResult,
   QuotaState,
@@ -63,10 +66,13 @@ import type {
 } from './types.js';
 
 export type {
+  ApiKey,
+  ApiKeyWithSecret,
   CloudflareAutoSetupInput,
   CloudflareAutoSetupResult,
   CloudflareDetectResult,
   ConnectionRevokedEvent,
+  CreateApiKeyInput,
   InboundDetail,
   InboundListResult,
   InboundMail,
@@ -150,6 +156,8 @@ export class OrbotoMail extends EventEmitter {
   readonly inbound: InboundResource;
   /** Sub-resource: sender-domain management (Cloudflare auto-setup, OMS-15). */
   readonly senderDomains: SenderDomainsResource;
+  /** Sub-resource: API-key management (OMS-31). */
+  readonly apiKeys: ApiKeysResource;
 
   constructor(opts: OrbotoMailOptions = {}) {
     super();
@@ -198,6 +206,7 @@ export class OrbotoMail extends EventEmitter {
     this.sends = new SendsResource(this.http);
     this.inbound = new InboundResource(this.http);
     this.senderDomains = new SenderDomainsResource(this.http);
+    this.apiKeys = new ApiKeysResource(this.http);
   }
 
   /**
@@ -482,6 +491,50 @@ class InboundResource {
    */
   async get(id: string): Promise<InboundDetail> {
     return this.http.request<InboundDetail>('GET', `/v1/inbound/${encodeURIComponent(id)}`);
+  }
+}
+
+class ApiKeysResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /** List all API keys on this account (no plaintext). */
+  async list(): Promise<{ apiKeys: ApiKey[] }> {
+    return this.http.request<{ apiKeys: ApiKey[] }>('GET', '/v1/api-keys');
+  }
+
+  /** Get one API key by id (no plaintext). */
+  async get(id: string): Promise<ApiKey> {
+    return this.http.request<ApiKey>('GET', `/v1/api-keys/${encodeURIComponent(id)}`);
+  }
+
+  /**
+   * Mint a new API key. The plaintext `key` field is returned exactly
+   * ONCE in this response — capture it immediately. Subsequent reads
+   * never expose it.
+   */
+  async create(input: CreateApiKeyInput = {}): Promise<ApiKeyWithSecret> {
+    return this.http.request<ApiKeyWithSecret>('POST', '/v1/api-keys', input);
+  }
+
+  /** Immediately revoke an API key. */
+  async revoke(id: string): Promise<{ ok: true; revokedAt: string }> {
+    return this.http.request<{ ok: true; revokedAt: string }>(
+      'DELETE',
+      `/v1/api-keys/${encodeURIComponent(id)}`,
+    );
+  }
+
+  /**
+   * Atomic rotate — mints a fresh key with the same name + revokes the
+   * old one in a single TXN. New plaintext returned ONCE in the
+   * response; capture it before the call returns.
+   */
+  async rotate(id: string): Promise<ApiKeyWithSecret> {
+    return this.http.request<ApiKeyWithSecret>(
+      'POST',
+      `/v1/api-keys/${encodeURIComponent(id)}/rotate`,
+      {},
+    );
   }
 }
 
