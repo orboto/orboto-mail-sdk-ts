@@ -55,7 +55,7 @@ const mail = new OrbotoMail({
 });
 ```
 
-Get an API key at [account.orboto.io/mail/keys](https://account.orboto.io/mail/keys). The dashboard supports manual key issuance for any integration as well as the OAuth Connection-Protocol when you want OMS to mint a key for a specific application without copy-paste.
+Get an API key at [account.orboto.io/mail/api-keys](https://account.orboto.io/mail/api-keys). The dashboard supports manual key issuance for any integration as well as the OAuth Connection-Protocol when you want OMS to mint a key for a specific application without copy-paste.
 
 ## Sending mail
 
