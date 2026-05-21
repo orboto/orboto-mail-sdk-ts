@@ -294,7 +294,7 @@ export interface SendListItem {
   status: 'queued' | 'delivered' | 'bounced' | 'complained' | 'rejected';
   bounceType: string | null;
   complaintType: string | null;
-  sesRegion: string | null;
+  region: string | null;
   sizeBytes: number | null;
   overage: boolean;
   tags: Record<string, unknown> | null;

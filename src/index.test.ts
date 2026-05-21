@@ -269,8 +269,8 @@ describe('OrbotoMail retry-with-backoff', () => {
         if (calls < 2) {
           return errorResponse(503, {
             error: 'service_unavailable',
-            reason: 'ses_transient_error',
-            message: 'SES eu-central-1 transient error, retry.',
+            reason: 'transport_transient_error',
+            message: 'Transport eu-central-1 transient error, retry.',
             retryAfterMs: 10,
           });
         }
