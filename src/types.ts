@@ -120,7 +120,7 @@ export interface InboundListResult {
   nextCursor: string | null;
 }
 
-/** Sender-domain DNS detection result (Cloudflare auto-setup, OMS-15). */
+/** Sender-domain DNS detection result for the Cloudflare auto-setup flow. */
 export interface CloudflareDetectResult {
   onCloudflare: boolean;
   nameservers: string[];
@@ -202,7 +202,7 @@ export interface QuotaState {
   /** ISO-8601 timestamp of the next UTC midnight. `null` when no cap. */
   dayResetAt: string | null;
   /**
-   * OMS-29 — Overage handling:
+   * Overage handling when subscription quota is exhausted:
    * - `hard_gate`: reject sends over subscription quota → 402 `quota_exhausted_hard_gate`
    * - `use_credits`: consume `creditBalance` + accrue against `monthlyOverageCapEurCents`
    * - `null`: legacy `allowOverage` path (will be retired once every customer is migrated)
@@ -217,9 +217,9 @@ export interface QuotaState {
 }
 
 export interface SendResult {
-  /** SES-issued message-id. Stored on `oms_sends.message_id`. */
+  /** Server-issued message id. */
   messageId: string;
-  /** `queued` at success-time; later moves through SES events. */
+  /** `queued` at success-time; later moves through delivery-event transitions. */
   status: 'queued' | 'delivered' | 'bounced' | 'complained' | 'rejected';
   /** Quota snapshot AFTER this send was accounted for. */
   remainingQuota: QuotaState;
@@ -258,7 +258,11 @@ export type WebhookEvent =
   | 'bounce.permanent'
   | 'bounce.transient'
   | 'complaint'
-  | 'delivery';
+  | 'delivery'
+  | 'inbound.received'
+  | 'senderDomain.dkim.migrated'
+  | 'senderDomain.dkim.rotation_pending'
+  | 'senderDomain.dkim.rotation_complete';
 
 export interface Webhook {
   id: string;
