@@ -1,0 +1,8 @@
+# TypeScript incremental-compilation artefact — not user-facing.
+dist/.tsbuildinfo
+
+# Source maps + test files (also covered by `files: ["dist", "README.md", "LICENSE.md"]`
+# whitelist; explicit here so an accidental files-array bug doesn't ship them).
+*.test.ts
+*.test.js
+src/
