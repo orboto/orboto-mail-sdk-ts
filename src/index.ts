@@ -22,7 +22,7 @@
  *     html: '<h1>Welcome!</h1>',
  *   });
  *
- *   // result.messageId      — SES message-id
+ *   // result.messageId      — server-issued message id
  *   // result.status         — 'queued' at success-time
  *   // result.remainingQuota — quota state AFTER this send
  *
@@ -154,9 +154,9 @@ export class OrbotoMail extends EventEmitter {
   readonly sends: SendsResource;
   /** Sub-resource: inbound mail (received messages + presigned-URL access to the raw MIME body). */
   readonly inbound: InboundResource;
-  /** Sub-resource: sender-domain management (Cloudflare auto-setup, OMS-15). */
+  /** Sub-resource: sender-domain management (Cloudflare auto-setup). */
   readonly senderDomains: SenderDomainsResource;
-  /** Sub-resource: API-key management (OMS-31). */
+  /** Sub-resource: API-key management. */
   readonly apiKeys: ApiKeysResource;
 
   constructor(opts: OrbotoMailOptions = {}) {
