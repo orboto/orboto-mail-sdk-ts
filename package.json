@@ -49,8 +49,13 @@
     "dsgvo",
     "typescript-sdk"
   ],
-  "homepage": "https://mail.orboto.io",
+  "homepage": "https://github.com/orboto/orboto-mail-sdk-ts#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orboto/orboto-mail-sdk-ts.git"
+  },
   "bugs": {
+    "url": "https://github.com/orboto/orboto-mail-sdk-ts/issues",
     "email": "support@orboto.io"
   },
   "publishConfig": {
