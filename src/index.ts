@@ -1,5 +1,5 @@
 /**
- * @orboto/mail — Official TypeScript SDK for the Orboto Mail Service.
+ * @orboto/mail - Official TypeScript SDK for the Orboto Mail Service.
  *
  * Usage:
  *
@@ -22,9 +22,9 @@
  *     html: '<h1>Welcome!</h1>',
  *   });
  *
- *   // result.messageId      — server-issued message id
- *   // result.status         — 'queued' at success-time
- *   // result.remainingQuota — quota state AFTER this send
+ *   // result.messageId      - server-issued message id
+ *   // result.status         - 'queued' at success-time
+ *   // result.remainingQuota - quota state AFTER this send
  *
  *   // Subscribe to lifecycle events:
  *   mail.on('quota-warning',   (q) => console.warn('80%', q));
@@ -57,8 +57,10 @@ import type {
   SendListResult,
   SendResult,
   SendTemplateInput,
+  SenderDomain,
   SuppressionCheckResult,
   SuppressionEntry,
+  UpdateSenderDomainInput,
   Template,
   Webhook,
   WebhookEvent,
@@ -88,6 +90,8 @@ export type {
   SendListResult,
   SendResult,
   SendTemplateInput,
+  SenderDomain,
+  UpdateSenderDomainInput,
   SuppressionCheckResult,
   SuppressionEntry,
   SuppressionListResult,
@@ -106,13 +110,13 @@ export interface OrbotoMailOptions {
   timeout?: number;
   /** Max retries for transient errors (HTTP 502/503/504, network timeouts). Default 3. */
   maxRetries?: number;
-  /** Injection point for tests — replace global fetch with a fake. */
+  /** Injection point for tests - replace global fetch with a fake. */
   fetch?: typeof fetch;
 }
 
 // Default API base URL. The nginx edge at `mail.orboto.io` reverse-
 // proxies `/api/v1/*` to the internal Fastify on `:3000`. The
-// trailing `/api` IS part of the default base — the SDK's HttpClient
+// trailing `/api` IS part of the default base - the SDK's HttpClient
 // appends `/v1/send` etc. directly, producing
 // `https://mail.orboto.io/api/v1/send` on the wire. See
 // `deploy/docker-compose.yml` + `apps/web/nginx.conf` for the
@@ -121,7 +125,7 @@ const DEFAULT_BASE_URL = 'https://mail.orboto.io/api';
 
 /**
  * Lazily load dotenv if it's installed in the consumer's project. We
- * never throw if dotenv isn't present — callers who use Vite / Next /
+ * never throw if dotenv isn't present - callers who use Vite / Next /
  * any other env-loader work just as well.
  */
 function tryLoadDotenv(): void {
@@ -229,7 +233,7 @@ export class OrbotoMail extends EventEmitter {
 
   /**
    * Send multiple messages in one HTTP call. Up to 100 per
-   * batch. Per-item processing — partial failures are surfaced in the
+   * batch. Per-item processing - partial failures are surfaced in the
    * `results` array; the call as a whole always returns 200. Inspect
    * `summary` + `results[].ok` to decide whether to retry indices.
    *
@@ -350,7 +354,7 @@ class WebhooksResource {
 
   /**
    * Create a new webhook subscription. The returned `secret` field is
-   * the plaintext signing key — it is shown exactly once. Persist it
+   * the plaintext signing key - it is shown exactly once. Persist it
    * immediately; subsequent GETs strip the field.
    */
   async create(input: {
@@ -463,6 +467,28 @@ class SenderDomainsResource {
       input,
     );
   }
+
+  /**
+   * Update mutable per-domain settings (OMS-84). Currently only
+   * `openTrackingEnabled` is exposed; future toggles will land here.
+   * Returns the updated domain. Empty input is a graceful no-op
+   * (server returns the unchanged row).
+   *
+   * @example
+   * await client.senderDomains.update(domainId, { openTrackingEnabled: true });
+   */
+  async update(
+    domainId: string,
+    input: UpdateSenderDomainInput,
+  ): Promise<SenderDomain> {
+    return this.http.request<SenderDomain>(
+      'PATCH',
+      `/v1/sender-domains/${encodeURIComponent(domainId)}`,
+      {
+        open_tracking_enabled: input.openTrackingEnabled,
+      },
+    );
+  }
 }
 
 class InboundResource {
@@ -470,7 +496,7 @@ class InboundResource {
 
   /**
    * List inbound mails (most-recent first), cursor-paginated.
-   * Body is NOT returned in the list response — call `get(id)` for the
+   * Body is NOT returned in the list response - call `get(id)` for the
    * presigned download-URL.
    */
   async list(opts: { limit?: number; cursor?: string } = {}): Promise<InboundListResult> {
@@ -486,7 +512,7 @@ class InboundResource {
 
   /**
    * Get one inbound mail + a 15-min presigned-URL for the raw MIME
-   * body. Fetch the body from `downloadUrl` directly with `fetch()` —
+   * body. Fetch the body from `downloadUrl` directly with `fetch()` -
    * no Bearer needed, the URL is its own credential.
    */
   async get(id: string): Promise<InboundDetail> {
@@ -509,7 +535,7 @@ class ApiKeysResource {
 
   /**
    * Mint a new API key. The plaintext `key` field is returned exactly
-   * ONCE in this response — capture it immediately. Subsequent reads
+   * ONCE in this response - capture it immediately. Subsequent reads
    * never expose it.
    */
   async create(input: CreateApiKeyInput = {}): Promise<ApiKeyWithSecret> {
@@ -525,7 +551,7 @@ class ApiKeysResource {
   }
 
   /**
-   * Atomic rotate — mints a fresh key with the same name + revokes the
+   * Atomic rotate - mints a fresh key with the same name + revokes the
    * old one in a single TXN. New plaintext returned ONCE in the
    * response; capture it before the call returns.
    */
