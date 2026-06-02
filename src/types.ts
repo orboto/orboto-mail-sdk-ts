@@ -145,6 +145,39 @@ export interface CloudflareAutoSetupResult {
   tokenStored: boolean;
 }
 
+/**
+ * Mutable per-domain settings. Pass only the fields you want to change;
+ * omitted fields are left untouched. Empty input is a graceful no-op
+ * (the server returns the unchanged row).
+ */
+export interface UpdateSenderDomainInput {
+  /** OMS-72 / OMS-84 - per-domain open-tracking opt-in. */
+  openTrackingEnabled?: boolean;
+}
+
+/** Shape returned by sender-domain CRUD calls. */
+export interface SenderDomain {
+  id: string;
+  domain: string;
+  domainType: string;
+  dkimMode: string;
+  dkimSelector: string | null;
+  verificationStatus: string;
+  verifiedAt: string | null;
+  createdAt: string;
+  dkimRecords: Array<{ name: string; type: 'CNAME' | 'TXT'; value: string }>;
+  spfRequired: string | null;
+  dmarcRecommended: string | null;
+  mailFromRecords: Array<{
+    name: string;
+    type: 'MX' | 'TXT';
+    value: string;
+    priority?: number;
+  }>;
+  openTrackingEnabled: boolean;
+  notes: string | null;
+}
+
 export interface SendTemplateInput {
   templateId: string;
   to: string;
