@@ -31,7 +31,7 @@ export interface SendInput {
 /**
  * One message inside a batch. Same shape as SendInput but with
  * `templateId` + `variables` allowed alongside the inline-content
- * fields — server resolves per-item.
+ * fields - server resolves per-item.
  */
 export interface SendBatchMessage {
   from: string;
@@ -86,7 +86,7 @@ export interface ApiKey {
   revokedAt: string | null;
 }
 
-/** Returned by create + rotate — plaintext key included exactly once. */
+/** Returned by create + rotate - plaintext key included exactly once. */
 export interface ApiKeyWithSecret extends ApiKey {
   /** Plaintext secret. Capture immediately + never reachable again. */
   key: string;
@@ -163,7 +163,7 @@ export interface QuotaState {
   total: number;
   /** ISO-8601 timestamp when the quota resets. */
   resetAt: string;
-  /** Fraction in [0, ∞) — can exceed 1 within overage allowance. */
+  /** Fraction in [0, ∞) - can exceed 1 within overage allowance. */
   percentUsed: number;
   /** Threshold at which a `quota-warning` event is fired. */
   softWarnAt: number;
@@ -171,13 +171,13 @@ export interface QuotaState {
   softWarnTriggered: boolean;
   /**
    * When `current >= total`, populated with the specific cap-reason:
-   *   - `base_quota`         — base monthly quota exhausted, overage
+   *   - `base_quota`         - base monthly quota exhausted, overage
    *                            not opted in
-   *   - `no_payment_method`  — overage opted in but no verified
+   *   - `no_payment_method`  - overage opted in but no verified
    *                            payment method on file
-   *   - `overage_cap`        — both opted-in + paid, but the
+   *   - `overage_cap`        - both opted-in + paid, but the
    *                            per-tier overage cap has been reached
-   *   - `daily_cap`          — per-day cap reached (Free tier;
+   *   - `daily_cap`          - per-day cap reached (Free tier;
    *                            resets at UTC midnight)
    * Undefined when the quota is healthy.
    */
@@ -259,6 +259,7 @@ export type WebhookEvent =
   | 'bounce.transient'
   | 'complaint'
   | 'delivery'
+  | 'email.opened'
   | 'inbound.received'
   | 'senderDomain.dkim.migrated'
   | 'senderDomain.dkim.rotation_pending'
@@ -278,7 +279,7 @@ export interface Webhook {
 
 /**
  * A `Webhook` augmented with the plaintext signing secret. Only returned
- * by `webhooks.create()` and `webhooks.rotateSecret()` — callers must
+ * by `webhooks.create()` and `webhooks.rotateSecret()` - callers must
  * persist this value immediately; subsequent GETs strip it.
  */
 export interface WebhookWithSecret extends Webhook {
@@ -303,6 +304,15 @@ export interface SendListItem {
   createdAt: string;
   deliveredAt: string | null;
   bouncedAt: string | null;
+  /**
+   * OMS-72 - open-tracking. Populated when the customer enabled
+   * `open_tracking_enabled` on the sender-domain AND a recipient
+   * email client loaded the injected 1x1 pixel. Null when tracking
+   * is off or the recipient never opened.
+   */
+  openedAt: string | null;
+  lastOpenedAt: string | null;
+  openCount: number;
 }
 
 export interface SendListResult {
@@ -322,7 +332,7 @@ export interface SuppressionListResult {
  */
 export interface ApiErrorBody {
   error: string;
-  /** Specific reason within the error class — drives retry decisions. */
+  /** Specific reason within the error class - drives retry decisions. */
   reason?: string;
   message: string;
   /** Present on 402 responses so callers can render an actionable banner. */
