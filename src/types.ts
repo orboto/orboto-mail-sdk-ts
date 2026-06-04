@@ -165,7 +165,19 @@ export interface SenderDomain {
   verificationStatus: string;
   verifiedAt: string | null;
   createdAt: string;
-  dkimRecords: Array<{ name: string; type: 'CNAME' | 'TXT'; value: string }>;
+  dkimRecords: Array<{
+    name: string;
+    type: 'CNAME' | 'TXT';
+    value: string;
+    /**
+     * OMS-88 - present only when type='TXT' and value.length > 255.
+     * Strict DNS providers (Route 53, AWS) reject the single-string
+     * value; they want each chunk in its own quoted string,
+     * space-separated, inside one record. Lenient providers
+     * (Cloudflare, Google Cloud DNS) auto-split internally.
+     */
+    valueChunks?: string[];
+  }>;
   spfRequired: string | null;
   dmarcRecommended: string | null;
   mailFromRecords: Array<{
