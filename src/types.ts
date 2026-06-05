@@ -9,6 +9,28 @@
 /** Standard tag-bag for analytics / per-message routing. */
 export type MessageTags = Record<string, string>;
 
+/**
+ * OMS-91 - file attachment for outbound mail. `content` is the file
+ * bytes encoded as base64 (the API caller decides the encoding; OMS
+ * decodes server-side and builds the MIME message). Total decoded
+ * size across all attachments must stay under 30 MB; per-attachment
+ * the base64 string is capped at 40 MB on the wire.
+ */
+export interface SendAttachment {
+  /** Display filename for the recipient's mail client. */
+  filename: string;
+  /** base64-encoded file bytes. */
+  content: string;
+  /** MIME type, e.g. `application/pdf`. */
+  contentType: string;
+  /**
+   * Optional Content-ID for inline references from HTML
+   * (`<img src="cid:<id>">`). Without it, the attachment renders as
+   * a regular attachment in the recipient's client.
+   */
+  contentId?: string;
+}
+
 export interface SendInput {
   /**
    * From address. Must be on the customer's verified-domains
@@ -26,6 +48,12 @@ export interface SendInput {
    * webhook filtering. Keys + values: ASCII, ≤256 chars each.
    */
   tags?: MessageTags;
+  /**
+   * OMS-91 - optional file attachments. Max 20 entries; total decoded
+   * size across all entries must stay under 30 MB. When present, OMS
+   * switches to SES Raw-Content (multipart/mixed MIME) under the hood.
+   */
+  attachments?: SendAttachment[];
 }
 
 /**
@@ -42,6 +70,7 @@ export interface SendBatchMessage {
   tags?: MessageTags;
   templateId?: string;
   variables?: Record<string, unknown>;
+  attachments?: SendAttachment[];
 }
 
 export interface SendBatchInput {

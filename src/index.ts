@@ -88,6 +88,7 @@ export type {
   SendInput,
   SendListItem,
   SendListResult,
+  SendAttachment,
   SendResult,
   SendTemplateInput,
   SenderDomain,
