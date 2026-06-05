@@ -39,6 +39,17 @@ export interface SendInput {
   from: string;
   /** Recipient address. Single recipient per send. Use `mail.sendBatch({ messages })` for fan-out to many recipients. */
   to: string;
+  /**
+   * OMS-94 - additional CC recipients (visible to all other
+   * recipients). Max 50.
+   */
+  cc?: string[];
+  /**
+   * OMS-94 - silent BCC recipients (hidden from To + Cc + each
+   * other). Max 50. Delivered via envelope only; the MIME message
+   * never carries a Bcc header.
+   */
+  bcc?: string[];
   subject: string;
   /** At least one of `html` or `text` must be present. */
   html?: string;
@@ -64,6 +75,10 @@ export interface SendInput {
 export interface SendBatchMessage {
   from: string;
   to: string;
+  /** OMS-94 - additional CC recipients per message. */
+  cc?: string[];
+  /** OMS-94 - silent BCC recipients per message. */
+  bcc?: string[];
   subject?: string;
   html?: string;
   text?: string;
