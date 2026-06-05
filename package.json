@@ -1,6 +1,6 @@
 {
   "name": "@orboto/mail",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Official TypeScript SDK for the Orboto Mail Service. Drop-in transactional-mail client with auto-quota-tracking, retry-with-backoff, EventEmitter for quota lifecycle events, and full TypeScript types. EU-hosted, GDPR-compliant.",
   "license": "MIT",
   "type": "module",
