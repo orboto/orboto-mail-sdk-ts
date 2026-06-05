@@ -34,7 +34,7 @@ console.log(result.remainingQuota);  // QuotaState { current, total, ... }
   region-failover. No US data transit. GDPR/DSGVO-aligned out of the box.
 - **Custom-domain self-service.** Add your sending domain, copy the
   generated DKIM CNAMEs + SPF/DMARC records to your DNS provider, click
-  Verify — your account starts sending from `support@yourdomain.com`.
+  Verify - your account starts sending from `support@yourdomain.com`.
 - **Quota-aware by design.** Every send returns the updated quota state.
   No second API call to figure out where you stand.
 - **Agent-first.** A companion MCP server [`@orboto/mail-mcp`](https://www.npmjs.com/package/@orboto/mail-mcp) exposes the
@@ -88,9 +88,47 @@ const result = await mail.sendTemplate({
 });
 ```
 
-Variables get validated against the template's stored Zod schema —
+Variables get validated against the template's stored Zod schema -
 missing or wrong-typed variables come back as
 `400 template_variable_validation`.
+
+### Send with CC + BCC
+
+```ts
+await mail.send({
+  from: 'support@customer.de',
+  to: 'primary@example.com',
+  cc: ['cc1@example.com', 'cc2@example.com'],   // visible to all recipients (max 50)
+  bcc: ['silent@example.com'],                   // envelope-only delivery (max 50)
+  subject: 'Quarterly report',
+  html: '<p>See attached.</p>',
+});
+```
+
+Max 50 entries each. `cc` recipients show in the recipient's headers; `bcc` recipients receive the mail but never appear in any header (envelope-only per RFC 2822). Both flavours count as one quota decrement per call.
+
+### Send with attachments
+
+```ts
+import { readFile } from 'node:fs/promises';
+
+const pdfBytes = await readFile('/tmp/invoice.pdf');
+await mail.send({
+  from: 'noreply@acme.orbo.to',
+  to: 'user@example.com',
+  subject: 'Your invoice',
+  html: '<p>Find your invoice attached.</p>',
+  attachments: [
+    {
+      filename: 'invoice-2026-06.pdf',
+      content: pdfBytes.toString('base64'),
+      contentType: 'application/pdf',
+    },
+  ],
+});
+```
+
+Up to 20 attachments per send; total decoded size capped at 30 MB. Set `contentId` to reference an attachment inline from your HTML (`<img src="cid:logo-1">`).
 
 ## Quota events
 
@@ -140,7 +178,7 @@ try {
 | Status | Reason                                | What to do |
 |--------|---------------------------------------|------------|
 | 400 | `from_domain_not_authorized` | Add the domain at `account.orboto.io/mail/domains` |
-| 400 | `recipient_suppressed` | Recipient is on the suppression list — check via `mail.suppression.check()` |
+| 400 | `recipient_suppressed` | Recipient is on the suppression list - check via `mail.suppression.check()` |
 | 400 | `template_variable_validation` | Variables don't match the template's schema |
 | 401 | `token_revoked` | Re-issue an API key |
 | 401 | `connection_revoked` | OAuth-issued connection was revoked customer-side |
@@ -154,10 +192,10 @@ The SDK auto-retries 502/503/504 + network timeouts up to `maxRetries`
 
 ## Wire-format notes
 
-- **Single recipient per `send()`.** Use `mail.sendBatch({ messages })` for fan-out — up to 100 messages per HTTP call with per-item outcomes.
+- **Single `to` per `send()`.** Add up to 50 `cc` and 50 `bcc` recipients alongside it (see "Send with CC + BCC" below). For multi-`to` fan-out, use `mail.sendBatch({ messages })` - up to 100 messages per HTTP call with per-item outcomes.
 - **`tags` is `Record<string, string>`.** Keys + values are ASCII, ≤256 chars each. Used for analytics + webhook filtering on `oms_sends.tags`.
 - **No JSX/React input.** Use server-side templates via `mail.templates.create(...)` + `mail.sendTemplate({ templateId, variables })`, or render React to HTML before calling `mail.send()`.
-- **`replyTo` / `cc` / `bcc` are not supported yet.** Single-recipient transactional flows only.
+- **`replyTo` is not supported yet.** File-attachment, `cc`, and `bcc` are - see the sections below.
 
 If you hit a shape that's unexpected, drop us a line at [support@orboto.io](mailto:support@orboto.io).
 
@@ -171,4 +209,4 @@ import type { SendResult, QuotaState, SuppressionEntry } from '@orboto/mail';
 
 ## License
 
-[MIT](./LICENSE.md) — use it however you want.
+[MIT](./LICENSE.md) - use it however you want.
