@@ -36,7 +36,11 @@
  */
 import { EventEmitter } from 'node:events';
 
-import { OrbotoMailError } from './errors.js';
+import {
+  OrbotoMailError,
+  PaymentRequiredError,
+  WalletUnavailableError,
+} from './errors.js';
 import { HttpClient } from './http.js';
 import { QuotaEmitter } from './quota-emitter.js';
 import type {
@@ -101,7 +105,7 @@ export type {
   WebhookEvent,
   WebhookWithSecret,
 } from './types.js';
-export { OrbotoMailError };
+export { OrbotoMailError, PaymentRequiredError, WalletUnavailableError };
 
 export interface OrbotoMailOptions {
   apiKey?: string;

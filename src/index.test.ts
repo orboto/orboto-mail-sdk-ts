@@ -18,7 +18,12 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { OrbotoMail, OrbotoMailError } from './index.js';
+import {
+  OrbotoMail,
+  OrbotoMailError,
+  PaymentRequiredError,
+  WalletUnavailableError,
+} from './index.js';
 import type { QuotaState, SendResult } from './types.js';
 
 function fakeFetch(handler: (url: string, init: RequestInit) => Promise<Response>): typeof fetch {
@@ -152,6 +157,64 @@ describe('OrbotoMail.send', () => {
       expect(err.remainingQuota?.current).toBe(75_000);
       expect(err.remainingQuota?.capReason).toBe('overage_cap');
     }
+  });
+
+  it('throws PaymentRequiredError on 402 payment_required (OMS-98)', async () => {
+    const mail = new OrbotoMail({
+      apiKey: 'oms_live_aaa',
+      baseUrl: 'https://example.test',
+      fetch: fakeFetch(async () =>
+        errorResponse(402, {
+          error: 'payment_required',
+          reason: 'payment_required',
+          message: 'Wallet balance too low to cover overage.',
+          remainingQuota: healthyQuota({ current: 100, total: 100, percentUsed: 1 }),
+        }),
+      ),
+    });
+
+    try {
+      await mail.send({ from: 'a@a.test', to: 'b@b.test', subject: 's', text: 't' });
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(PaymentRequiredError);
+      expect(e).toBeInstanceOf(OrbotoMailError); // still the base type
+      const err = e as PaymentRequiredError;
+      expect(err.statusCode).toBe(402);
+      expect(err.reason).toBe('payment_required');
+      expect(err.isRetryable).toBe(false);
+      expect(err.remainingQuota?.current).toBe(100);
+    }
+  });
+
+  it('throws WalletUnavailableError on 503 wallet_unavailable after retries (OMS-98)', async () => {
+    let calls = 0;
+    const mail = new OrbotoMail({
+      apiKey: 'oms_live_aaa',
+      baseUrl: 'https://example.test',
+      maxRetries: 1,
+      fetch: fakeFetch(async () => {
+        calls += 1;
+        return errorResponse(503, {
+          error: 'wallet_unavailable',
+          reason: 'wallet_unavailable',
+          message: 'Overage billing temporarily unavailable.',
+        });
+      }),
+    });
+
+    try {
+      await mail.send({ from: 'a@a.test', to: 'b@b.test', subject: 's', text: 't' });
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(WalletUnavailableError);
+      expect(e).toBeInstanceOf(OrbotoMailError);
+      const err = e as WalletUnavailableError;
+      expect(err.statusCode).toBe(503);
+      expect(err.isRetryable).toBe(true);
+    }
+    // 503 is retryable → the SDK retried before surfacing the error.
+    expect(calls).toBe(2); // initial + 1 retry
   });
 
   it('requires html or text', async () => {
