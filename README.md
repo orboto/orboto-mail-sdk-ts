@@ -155,23 +155,43 @@ await mail.suppression.remove('false-positive@example.com');
 
 ## Error handling
 
-Every non-2xx response throws an `OrbotoMailError`:
+Every non-2xx response throws an `OrbotoMailError`. The two wallet-billing
+cases also have dedicated subclasses (both extend `OrbotoMailError`, so a
+single `catch` still works):
 
 ```ts
-import { OrbotoMailError } from '@orboto/mail';
+import {
+  OrbotoMailError,
+  PaymentRequiredError,
+  WalletUnavailableError,
+} from '@orboto/mail';
 
 try {
   await mail.send({ /* … */ });
 } catch (err) {
-  if (err instanceof OrbotoMailError) {
-    console.log(err.statusCode);     // 402
-    console.log(err.reason);         // 'overage_cap_exceeded'
+  if (err instanceof PaymentRequiredError) {
+    // Monthly quota used up + wallet balance too low. Show a top-up prompt.
+  } else if (err instanceof WalletUnavailableError) {
+    // Transient billing outage; the send was NOT dispatched. Retry later.
+  } else if (err instanceof OrbotoMailError) {
+    console.log(err.statusCode);     // e.g. 400
+    console.log(err.reason);         // e.g. 'recipient_suppressed'
     console.log(err.remainingQuota); // QuotaState | undefined
     console.log(err.isRetryable);    // true for 502/503/504
   }
   throw err;
 }
 ```
+
+### Overage billing (wallet)
+
+Once the monthly included quota is used up, above-quota sends draw on the
+account **wallet** (cents-based balance, topped up at
+`account.orboto.io/mail/billing`). A successful overage send returns
+`overage: true`. If the wallet can't cover it you get a
+`PaymentRequiredError` (402); if the billing service is briefly
+unreachable you get a `WalletUnavailableError` (503) and the send is
+**not** dispatched (fail-closed).
 
 ### Specific reasons you'll see
 
@@ -182,13 +202,15 @@ try {
 | 400 | `template_variable_validation` | Variables don't match the template's schema |
 | 401 | `token_revoked` | Re-issue an API key |
 | 401 | `connection_revoked` | OAuth-issued connection was revoked customer-side |
-| 402 | `quota_exhausted_no_overage_opted_in` | Enable overage at `account.orboto.io/mail/usage` |
-| 402 | `quota_exhausted_no_valid_payment_method` | Add a payment method |
-| 402 | `overage_cap_exceeded` | Upgrade tier or wait for monthly reset |
+| 402 | `payment_required` (`PaymentRequiredError`) | Monthly quota used up + wallet balance too low. Top up at `account.orboto.io/mail/billing` |
+| 402 | `quota_exhausted_daily` | Free-tier daily cap reached; resets at UTC midnight |
+| 503 | `wallet_unavailable` (`WalletUnavailableError`) | Transient billing outage; send not dispatched, retry shortly (auto-retried first) |
 | 503 | `ses_transient_error` | Auto-retried; if persistent, both SES regions are down |
 
 The SDK auto-retries 502/503/504 + network timeouts up to `maxRetries`
-(default 3) with exponential backoff + jitter.
+(default 3) with exponential backoff + jitter - including
+`wallet_unavailable`, so a surfaced `WalletUnavailableError` means the
+retries were already exhausted.
 
 ## Wire-format notes
 

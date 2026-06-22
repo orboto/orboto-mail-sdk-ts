@@ -13,7 +13,7 @@
  * Not exported — this is an implementation detail. Consumers use the
  * `OrbotoMail` class.
  */
-import { OrbotoMailError } from './errors.js';
+import { OrbotoMailError, createOrbotoMailError } from './errors.js';
 import type { ApiErrorBody, QuotaState } from './types.js';
 
 export interface HttpClientOptions {
@@ -92,7 +92,7 @@ export class HttpClient {
 
         if (!res.ok) {
           const errBody = parsed as ApiErrorBody | undefined;
-          const sdkErr = new OrbotoMailError({ statusCode: res.status, body: errBody });
+          const sdkErr = createOrbotoMailError({ statusCode: res.status, body: errBody });
 
           // Detect a revoked-connection 401 and fire the SDK event so
           // consumers can disable the relevant integration without

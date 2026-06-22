@@ -36,3 +36,50 @@ export class OrbotoMailError extends Error {
     return false;
   }
 }
+
+/**
+ * 402 `payment_required` (OMS-98): the monthly included quota is used up
+ * and the account wallet balance is too low to cover an above-quota
+ * (overage) send. Distinct from `OrbotoMailError` with a generic 402 so
+ * consumers can branch on `instanceof` to show a top-up / billing UI.
+ * Not retryable - the balance won't change without a top-up.
+ */
+export class PaymentRequiredError extends OrbotoMailError {
+  constructor(opts: { statusCode: number; body?: ApiErrorBody; fallbackMessage?: string }) {
+    super(opts);
+    this.name = 'PaymentRequiredError';
+  }
+}
+
+/**
+ * 503 `wallet_unavailable` (OMS-98): the overage-billing wallet was
+ * unreachable, so an above-quota send was NOT dispatched (fail-closed).
+ * Transient - inherits `isRetryable=true` from the 503 status, and the
+ * SDK auto-retries it like any other 503 before surfacing this.
+ */
+export class WalletUnavailableError extends OrbotoMailError {
+  constructor(opts: { statusCode: number; body?: ApiErrorBody; fallbackMessage?: string }) {
+    super(opts);
+    this.name = 'WalletUnavailableError';
+  }
+}
+
+/**
+ * Build the right `OrbotoMailError` (sub)class for an API error body.
+ * Branches on `reason` so consumers get `instanceof`-able errors for
+ * the wallet flow while every error stays an `OrbotoMailError`.
+ */
+export function createOrbotoMailError(opts: {
+  statusCode: number;
+  body?: ApiErrorBody;
+  fallbackMessage?: string;
+}): OrbotoMailError {
+  const reason = opts.body?.reason;
+  if (opts.statusCode === 402 && reason === 'payment_required') {
+    return new PaymentRequiredError(opts);
+  }
+  if (opts.statusCode === 503 && reason === 'wallet_unavailable') {
+    return new WalletUnavailableError(opts);
+  }
+  return new OrbotoMailError(opts);
+}
