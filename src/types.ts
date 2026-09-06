@@ -231,6 +231,19 @@ export interface SenderDomain {
     priority?: number;
   }>;
   openTrackingEnabled: boolean;
+  /**
+   * Custom MAIL FROM (Return-Path) verification state per SES region,
+   * as observed by the last verify run. `pending` | `success` |
+   * `failed` | `temporary-failure`, `not-configured` when the identity
+   * has no custom MAIL FROM, or null when no verify has run yet. A
+   * verify call (re-)provisions the MAIL FROM when a region is
+   * `not-configured` or `failed`, so publishing the `mailFromRecords`
+   * and calling verify is the whole recovery path.
+   */
+  mailFromStatus: {
+    primary: string | null;
+    failover: string | null;
+  };
   notes: string | null;
 }
 
