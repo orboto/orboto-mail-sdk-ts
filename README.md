@@ -107,6 +107,20 @@ await mail.send({
 
 Max 50 entries each. `cc` recipients show in the recipient's headers; `bcc` recipients receive the mail but never appear in any header (envelope-only per RFC 2822). Both flavours count as one quota decrement per call.
 
+### Send with a Reply-To
+
+```ts
+await mail.send({
+  from: 'noreply@customer.de',
+  to: 'primary@example.com',
+  replyTo: 'Customer Support <support@customer.de>', // replies land here, not at noreply@
+  subject: 'Your order shipped',
+  text: 'Reply to this mail if anything is off.',
+});
+```
+
+`replyTo` is a single RFC-5322 mailbox; it does not have to be on one of your verified domains. Works on `sendBatch` messages and template sends too.
+
 ### Send with attachments
 
 ```ts
@@ -217,7 +231,7 @@ retries were already exhausted.
 - **Single `to` per `send()`.** Add up to 50 `cc` and 50 `bcc` recipients alongside it (see "Send with CC + BCC" below). For multi-`to` fan-out, use `mail.sendBatch({ messages })` - up to 100 messages per HTTP call with per-item outcomes.
 - **`tags` is `Record<string, string>`.** Keys + values are ASCII, ≤256 chars each. Used for analytics + webhook filtering on `oms_sends.tags`.
 - **No JSX/React input.** Use server-side templates via `mail.templates.create(...)` + `mail.sendTemplate({ templateId, variables })`, or render React to HTML before calling `mail.send()`.
-- **`replyTo` is not supported yet.** File-attachment, `cc`, and `bcc` are - see the sections below.
+- **`replyTo`** sets the Reply-To mailbox (any domain, display-name form allowed) - see "Send with a Reply-To" below. File-attachment, `cc`, and `bcc` are covered in their own sections.
 
 If you hit a shape that's unexpected, drop us a line at [support@orboto.io](mailto:support@orboto.io).
 

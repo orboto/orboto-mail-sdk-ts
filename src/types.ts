@@ -50,6 +50,11 @@ export interface SendInput {
    * never carries a Bcc header.
    */
   bcc?: string[];
+  /**
+   * OMS-110 - optional Reply-To mailbox (RFC-5322, display-name form
+   * allowed, any domain). Replies go there instead of `from`.
+   */
+  replyTo?: string;
   subject: string;
   /** At least one of `html` or `text` must be present. */
   html?: string;
@@ -79,6 +84,8 @@ export interface SendBatchMessage {
   cc?: string[];
   /** OMS-94 - silent BCC recipients per message. */
   bcc?: string[];
+  /** OMS-110 - optional Reply-To mailbox per message. */
+  replyTo?: string;
   subject?: string;
   html?: string;
   text?: string;
