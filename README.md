@@ -144,6 +144,24 @@ await mail.send({
 
 Up to 20 attachments per send; total decoded size capped at 30 MB. Set `contentId` to reference an attachment inline from your HTML (`<img src="cid:logo-1">`).
 
+## DMARC reports
+
+Once your domain's DMARC record points its `rua=` at orboto, receivers (Gmail, Outlook, Yahoo, ...) send daily aggregate reports that orboto parses for you.
+
+```ts
+const s = await mail.dmarc.summary('acme.example.com', { period: '30d' }); // '7d' | '30d' | '90d'
+if (s.summary === null) {
+  // nothing received yet - reports take 24-48h to start arriving
+} else {
+  console.log(s.summary.authPassRate, s.summary.dispositions, s.summary.topSourceIps);
+}
+const ips = await mail.dmarc.sourceIps('acme.example.com'); // who sends as you, and whether they align
+const page = await mail.dmarc.reports('acme.example.com', { limit: 20 });
+const one = await mail.dmarc.report(page.reports[0].id); // envelope + per-IP records
+```
+
+A domain you do not own answers 404 `domain_not_found`. An IP with `passedMessages: 0` and a foreign `headerFrom` is spoofing; one with your own `headerFrom` is a relay missing from SPF/DKIM.
+
 ## Quota events
 
 ```ts

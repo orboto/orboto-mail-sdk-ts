@@ -59,6 +59,11 @@ import type {
   SendInput,
   SendListItem,
   SendListResult,
+  DmarcPeriod,
+  DmarcSummary,
+  DmarcReportsPage,
+  DmarcReportDetail,
+  DmarcSourceIpsPage,
   SendResult,
   SendTemplateInput,
   SenderDomain,
@@ -72,6 +77,10 @@ import type {
 } from './types.js';
 
 export type {
+  DmarcDispositions,
+  DmarcReportEnvelope,
+  DmarcReportRecord,
+  DmarcSourceIp,
   ApiKey,
   ApiKeyWithSecret,
   CloudflareAutoSetupInput,
@@ -92,6 +101,11 @@ export type {
   SendInput,
   SendListItem,
   SendListResult,
+  DmarcPeriod,
+  DmarcSummary,
+  DmarcReportsPage,
+  DmarcReportDetail,
+  DmarcSourceIpsPage,
   SendAttachment,
   SendResult,
   SendTemplateInput,
@@ -167,6 +181,8 @@ export class OrbotoMail extends EventEmitter {
   readonly senderDomains: SenderDomainsResource;
   /** Sub-resource: API-key management. */
   readonly apiKeys: ApiKeysResource;
+  /** Sub-resource: DMARC aggregate-report queries per sender domain (OMS-48). */
+  readonly dmarc: DmarcResource;
 
   constructor(opts: OrbotoMailOptions = {}) {
     super();
@@ -216,6 +232,7 @@ export class OrbotoMail extends EventEmitter {
     this.inbound = new InboundResource(this.http);
     this.senderDomains = new SenderDomainsResource(this.http);
     this.apiKeys = new ApiKeysResource(this.http);
+    this.dmarc = new DmarcResource(this.http);
   }
 
   /**
@@ -437,6 +454,63 @@ class SendsResource {
 
   async get(id: string): Promise<SendListItem> {
     return this.http.request<SendListItem>('GET', `/v1/sends/${encodeURIComponent(id)}`);
+  }
+}
+
+class DmarcResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /**
+   * Aggregate auth-pass rate, dispositions, top reporting orgs and top
+   * source IPs for one of your sender domains over the period (default
+   * 30d, max 90d). `summary` is null until the first report arrives;
+   * receivers batch reports daily, so expect 24-48h after DNS goes live.
+   */
+  async summary(domain: string, opts: { period?: DmarcPeriod } = {}): Promise<DmarcSummary> {
+    const query = opts.period ? `?period=${opts.period}` : '';
+    return this.http.request<DmarcSummary>(
+      'GET',
+      `/v1/dmarc/domains/${encodeURIComponent(domain)}/summary${query}`,
+    );
+  }
+
+  /** Report envelopes for a domain, most recent first, cursor-paginated. */
+  async reports(
+    domain: string,
+    opts: { limit?: number; cursor?: string } = {},
+  ): Promise<DmarcReportsPage> {
+    const params = new URLSearchParams();
+    if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+    if (opts.cursor) params.set('cursor', opts.cursor);
+    const query = params.toString();
+    return this.http.request<DmarcReportsPage>(
+      'GET',
+      `/v1/dmarc/domains/${encodeURIComponent(domain)}/reports${query ? `?${query}` : ''}`,
+    );
+  }
+
+  /** One report with all its per-source-IP records. */
+  async report(id: string): Promise<DmarcReportDetail> {
+    return this.http.request<DmarcReportDetail>('GET', `/v1/dmarc/reports/${encodeURIComponent(id)}`);
+  }
+
+  /**
+   * Per-source-IP breakdown for a domain over the period: volume,
+   * alignment, dispositions and the header-from domains each IP used.
+   */
+  async sourceIps(
+    domain: string,
+    opts: { period?: DmarcPeriod; limit?: number; cursor?: string } = {},
+  ): Promise<DmarcSourceIpsPage> {
+    const params = new URLSearchParams();
+    if (opts.period) params.set('period', opts.period);
+    if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+    if (opts.cursor) params.set('cursor', opts.cursor);
+    const query = params.toString();
+    return this.http.request<DmarcSourceIpsPage>(
+      'GET',
+      `/v1/dmarc/domains/${encodeURIComponent(domain)}/source-ips${query ? `?${query}` : ''}`,
+    );
   }
 }
 

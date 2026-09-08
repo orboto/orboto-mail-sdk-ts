@@ -469,3 +469,92 @@ export interface SdkEventMap {
 }
 
 export type SdkEventName = keyof SdkEventMap;
+
+// ── DMARC aggregate-report queries (OMS-48) ──────────────────────────
+
+/** Reporting window for DMARC aggregations. Capped at 90 days (retention). */
+export type DmarcPeriod = '7d' | '30d' | '90d';
+
+export interface DmarcDispositions {
+  none: number;
+  quarantine: number;
+  reject: number;
+}
+
+export interface DmarcSummary {
+  domain: string;
+  period: DmarcPeriod;
+  /** Number of aggregate reports in the period. 0 = nothing received yet. */
+  totalReports: number;
+  /** Null while no report exists for the period (empty state, not an error). */
+  summary: {
+    totalMessages: number;
+    /** Messages that passed DMARC (DKIM aligned OR SPF aligned). */
+    passedMessages: number;
+    /** passed / total, 0..1 rounded to 4 decimals; null when total is 0. */
+    authPassRate: number | null;
+    dispositions: DmarcDispositions;
+    topReportingOrgs: Array<{ orgName: string; messages: number; reports: number }>;
+    topSourceIps: Array<{
+      sourceIp: string;
+      messages: number;
+      passedMessages: number;
+      dkimAlignedMessages: number;
+      spfAlignedMessages: number;
+    }>;
+  } | null;
+}
+
+export interface DmarcReportEnvelope {
+  id: string;
+  domain: string;
+  orgName: string;
+  reporterEmail: string;
+  reportId: string;
+  dateRangeBegin: string;
+  dateRangeEnd: string;
+  /** The `policy_published` block of the report as parsed JSON. */
+  policyPublished: unknown;
+  receivedAt: string;
+  recordCount: number;
+}
+
+export interface DmarcReportRecord {
+  id: string;
+  sourceIp: string;
+  count: number;
+  disposition: string;
+  dkimAligned: boolean;
+  spfAligned: boolean;
+  dkimResult: string | null;
+  spfResult: string | null;
+  headerFrom: string | null;
+}
+
+export interface DmarcReportDetail extends DmarcReportEnvelope {
+  records: DmarcReportRecord[];
+}
+
+export interface DmarcReportsPage {
+  reports: DmarcReportEnvelope[];
+  nextCursor: string | null;
+}
+
+export interface DmarcSourceIp {
+  sourceIp: string;
+  messages: number;
+  reports: number;
+  passedMessages: number;
+  dkimAlignedMessages: number;
+  spfAlignedMessages: number;
+  dispositions: DmarcDispositions;
+  /** header-from domains seen from this IP - a mismatch with your domain is the spoofing signal. */
+  headerFroms: Array<{ headerFrom: string | null; messages: number }>;
+}
+
+export interface DmarcSourceIpsPage {
+  domain: string;
+  period: DmarcPeriod;
+  sourceIps: DmarcSourceIp[];
+  nextCursor: string | null;
+}

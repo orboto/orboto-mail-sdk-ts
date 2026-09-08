@@ -217,6 +217,28 @@ describe('OrbotoMail.send', () => {
     expect(calls).toBe(2); // initial + 1 retry
   });
 
+  it('dmarc.summary + dmarc.sourceIps hit the scoped GET paths and pass through the shape (OMS-48)', async () => {
+    const calls: string[] = [];
+    const mail = new OrbotoMail({
+      apiKey: 'oms_live_aaa',
+      baseUrl: 'https://example.test',
+      fetch: fakeFetch(async (url) => {
+        calls.push(url);
+        if (url.includes('/summary')) {
+          return okResponse({ domain: 'acme.example.com', period: '7d', totalReports: 0, summary: null });
+        }
+        return okResponse({ domain: 'acme.example.com', period: '30d', sourceIps: [], nextCursor: null });
+      }),
+    });
+    const summary = await mail.dmarc.summary('acme.example.com', { period: '7d' });
+    expect(summary.totalReports).toBe(0);
+    expect(summary.summary).toBeNull();
+    const ips = await mail.dmarc.sourceIps('acme.example.com', { limit: 5 });
+    expect(ips.sourceIps).toEqual([]);
+    expect(calls[0]).toBe('https://example.test/v1/dmarc/domains/acme.example.com/summary?period=7d');
+    expect(calls[1]).toBe('https://example.test/v1/dmarc/domains/acme.example.com/source-ips?limit=5');
+  });
+
   it('requires html or text', async () => {
     const mail = new OrbotoMail({
       apiKey: 'oms_live_aaa',
