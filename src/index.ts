@@ -64,6 +64,7 @@ import type {
   DmarcReportsPage,
   DmarcReportDetail,
   DmarcSourceIpsPage,
+  DmarcAlertSubscription,
   SendResult,
   SendTemplateInput,
   SenderDomain,
@@ -106,6 +107,7 @@ export type {
   DmarcReportsPage,
   DmarcReportDetail,
   DmarcSourceIpsPage,
+  DmarcAlertSubscription,
   SendAttachment,
   SendResult,
   SendTemplateInput,
@@ -511,6 +513,33 @@ class DmarcResource {
       'GET',
       `/v1/dmarc/domains/${encodeURIComponent(domain)}/source-ips${query ? `?${query}` : ''}`,
     );
+  }
+
+  /** Current anomaly-alert opt-in state for a domain (off until enabled). */
+  async alerts(domain: string): Promise<DmarcAlertSubscription> {
+    return this.http.request<DmarcAlertSubscription>('GET', `/v1/dmarc/domains/${encodeURIComponent(domain)}/alerts`);
+  }
+
+  /**
+   * Enable (default) or update the daily anomaly check for a domain.
+   * Findings arrive as the `dmarc.anomaly` webhook event and, when
+   * `notifyEmail` is set, as a plain-text mail. Pass `notifyEmail: null`
+   * to clear the address, `enabled: false` to pause without losing it.
+   */
+  async setAlerts(
+    domain: string,
+    opts: { enabled?: boolean; notifyEmail?: string | null } = {},
+  ): Promise<DmarcAlertSubscription> {
+    return this.http.request<DmarcAlertSubscription>(
+      'POST',
+      `/v1/dmarc/domains/${encodeURIComponent(domain)}/alerts`,
+      opts,
+    );
+  }
+
+  /** Remove the opt-in entirely. */
+  async disableAlerts(domain: string): Promise<DmarcAlertSubscription> {
+    return this.http.request<DmarcAlertSubscription>('DELETE', `/v1/dmarc/domains/${encodeURIComponent(domain)}/alerts`);
   }
 }
 

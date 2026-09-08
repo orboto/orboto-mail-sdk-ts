@@ -372,7 +372,9 @@ export type WebhookEvent =
   | 'inbound.received'
   | 'senderDomain.dkim.migrated'
   | 'senderDomain.dkim.rotation_pending'
-  | 'senderDomain.dkim.rotation_complete';
+  | 'senderDomain.dkim.rotation_complete'
+  /** OMS-50 - daily DMARC anomaly check fired for an opted-in domain. */
+  | 'dmarc.anomaly';
 
 export interface Webhook {
   id: string;
@@ -557,4 +559,14 @@ export interface DmarcSourceIpsPage {
   period: DmarcPeriod;
   sourceIps: DmarcSourceIp[];
   nextCursor: string | null;
+}
+
+/** OMS-50 - per-domain DMARC anomaly alert opt-in. Off until you POST it on. */
+export interface DmarcAlertSubscription {
+  domain: string;
+  enabled: boolean;
+  /** Mailbox for alert mails; null = the `dmarc.anomaly` webhook event only. */
+  notifyEmail: string | null;
+  lastAlertAt: string | null;
+  updatedAt: string | null;
 }
