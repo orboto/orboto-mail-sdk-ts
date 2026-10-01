@@ -244,6 +244,7 @@ unreachable you get a `WalletUnavailableError` (503) and the send is
 | 400 | `template_variable_validation` | Variables don't match the template's schema |
 | 401 | `token_revoked` | Re-issue an API key |
 | 401 | `connection_revoked` | OAuth-issued connection was revoked customer-side |
+| 403 | `insufficient_scope` | The key is read-only (minted for a `mail:read-stats`-only connection) and may only call `getQuota()`; reconnect with the send permission |
 | 402 | `payment_required` (`PaymentRequiredError`) | Monthly quota used up + wallet balance too low. Top up at `account.orboto.io/mail/billing` |
 | 402 | `quota_exhausted_daily` | Free-tier daily cap reached; resets at UTC midnight |
 | 503 | `wallet_unavailable` (`WalletUnavailableError`) | Transient billing outage; send not dispatched, retry shortly (auto-retried first) |
